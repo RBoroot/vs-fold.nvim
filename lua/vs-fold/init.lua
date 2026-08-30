@@ -20,6 +20,11 @@ local DEFAULTS = {
   -- Show diagnostic icons (errors/warnings/etc.) in the fold text when a fold
   -- contains diagnostics, like VS Code's collapsed-region error indicator.
   foldtext_diagnostics = true,
+
+  -- Also show the most severe diagnostic icon of a closed fold in the sign
+  -- column (gutter), highlighted like VS Code's error bar indicator.
+  fold_gutter_diagnostics = true,
+
   diagnostics_icons = {
     [vim.diagnostic.severity.ERROR] = "✖",
     [vim.diagnostic.severity.WARN] = "⚠",
@@ -89,6 +94,34 @@ local SEVERITY_ORDER = {
   [vim.diagnostic.severity.HINT] = 4,
 }
 
+-- Returns per-severity diagnostic counts intersecting lines [start0, end0]
+-- (0-indexed), or nil when none.
+local function diagnostics_in_range(diags, start0, end0)
+  local counts = {}
+  for _, d in ipairs(diags) do
+    if d.lnum <= end0 and (d.end_lnum or d.lnum) >= start0 then
+      local sev = d.severity or vim.diagnostic.severity.ERROR
+      counts[sev] = (counts[sev] or 0) + 1
+    end
+  end
+  if next(counts) then
+    return counts
+  end
+  return nil
+end
+
+-- Returns the most severe severity value from a `diagnostics_in_range` result,
+-- or nil.
+local function highest_severity(counts)
+  local best
+  for sev in pairs(counts) do
+    if not best or (SEVERITY_ORDER[sev] or 9) < (SEVERITY_ORDER[best] or 9) then
+      best = sev
+    end
+  end
+  return best
+end
+
 -- Returns virtual-text chunks (text + highlight group) for the diagnostics
 -- contained inside the current fold, e.g. ` {icon.." 1", "DiagnosticSignError"}`.
 -- Returns an empty list when the fold has none.
@@ -98,17 +131,8 @@ local function diagnostic_chunks()
     return {}
   end
 
-  local start, finish = vim.v.foldstart - 1, vim.v.foldend - 1
-  local counts = {}
-  local found = false
-  for _, d in ipairs(vim.diagnostic.get(0)) do
-    if d.lnum <= finish and (d.end_lnum or d.lnum) >= start then
-      local sev = d.severity or vim.diagnostic.severity.ERROR
-      counts[sev] = (counts[sev] or 0) + 1
-      found = true
-    end
-  end
-  if not found then
+  local counts = diagnostics_in_range(vim.diagnostic.get(0), vim.v.foldstart - 1, vim.v.foldend - 1)
+  if not counts then
     return {}
   end
 
@@ -198,12 +222,68 @@ local function apply_queries()
   end
 end
 
+-- Sign namespace for the gutter diagnostic icons.
+local sign_ns
+
+local function clear_fold_signs(buf)
+  vim.api.nvim_buf_clear_namespace(buf, sign_ns, 0, -1)
+end
+
+-- Places a sign with the most severe diagnostic icon on each closed fold that
+-- contains diagnostics, for the lines currently visible in the window.
+local function update_fold_signs()
+  local cfg = M.config
+  if not (cfg.fold_gutter_diagnostics and M.enabled) then
+    clear_fold_signs(0)
+    return
+  end
+
+  local buf = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+  local w0 = vim.fn.line("w0", win)
+  local wlast = math.min(vim.fn.line("w$", win), vim.api.nvim_buf_line_count(buf))
+  if wlast < w0 then
+    return
+  end
+
+  local diags = vim.diagnostic.get(buf)
+  if #diags == 0 then
+    clear_fold_signs(buf)
+    return
+  end
+
+  vim.api.nvim_buf_clear_namespace(buf, sign_ns, 0, -1)
+
+  local line = w0
+  while line <= wlast do
+    local start = vim.fn.foldclosed(line)
+    if start == -1 then
+      line = line + 1
+    else
+      local finish = vim.fn.foldclosedend(start)
+      local counts = diagnostics_in_range(diags, start - 1, finish - 1)
+      if counts then
+        local sev = highest_severity(counts)
+        local icon = sev and cfg.diagnostics_icons[sev]
+        if icon then
+          vim.api.nvim_buf_set_extmark(buf, sign_ns, start - 1, 0, {
+            sign_text = icon,
+            sign_hl_group = SEVERITY_HL[sev],
+          })
+        end
+      end
+      line = finish + 1
+    end
+  end
+end
+
 --- Enable or disable vs-fold. Folding can be turned on/off at any time.
 ---@param enabled boolean
 ---@return boolean the new enabled state
 function M.setEnabled(enabled)
   M.enabled = enabled
   apply_window_opts()
+  update_fold_signs()
   return M.enabled
 end
 
@@ -236,13 +316,25 @@ function M.setup(opts)
     end
   end, { nargs = "?", desc = "Toggle VS-style treesitter folding" })
 
+  sign_ns = vim.api.nvim_create_namespace("vs_fold_signs")
+
+  local group = vim.api.nvim_create_augroup("vs_fold", { clear = true })
   vim.api.nvim_create_autocmd({ "FileType", "BufRead", "BufNewFile" }, {
-    group = vim.api.nvim_create_augroup("vs_fold", { clear = true }),
+    group = group,
     callback = apply_window_opts,
+  })
+  vim.api.nvim_create_autocmd(
+    { "CursorMoved", "WinScrolled", "BufEnter", "BufWinEnter", "BufReadPost", "BufWritePost", "FileType" },
+    { group = group, callback = update_fold_signs }
+  )
+  vim.api.nvim_create_autocmd("DiagnosticChanged", {
+    group = group,
+    callback = update_fold_signs,
   })
 
   apply_queries()
   apply_window_opts()
+  update_fold_signs()
 end
 
 return M
