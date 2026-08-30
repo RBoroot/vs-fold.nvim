@@ -54,8 +54,20 @@ require("vs-fold").setup({
   -- Keymap to toggle folding. Set to false to disable the default map.
   keymap = "<leader>zf",
 
+  -- Show diagnostic icons in the fold text when a fold contains errors/warnings/etc.
+  -- (like VS Code's collapsed-region indicator). Set to false to disable.
+  foldtext_diagnostics = true,
+  -- Icons per severity; set an entry to false to hide that severity.
+  diagnostics_icons = {
+    [4] = "✖", -- ERROR (vim.diagnostic.severity.ERROR)
+    [3] = "⚠", -- WARN
+    [2] = "ℹ", -- INFO
+    [1] = "⚑", -- HINT
+  },
+
   -- "vs"   -> ` int main() { ... }`
   -- "count"-> ` int main() (11)`
+  -- with diagnostics: ` int main() { ... }  ✖1 ⚠2`
   foldtext_style = "vs",
 
   -- Use ▸/▾ markers instead of the default +/- in the fold column

@@ -17,6 +17,16 @@ local DEFAULTS = {
   -- Visual Studio style: keep the '{' and show the body as "...}"
   foldtext_style = "vs",
 
+  -- Show diagnostic icons (errors/warnings/etc.) in the fold text when a fold
+  -- contains diagnostics, like VS Code's collapsed-region error indicator.
+  foldtext_diagnostics = true,
+  diagnostics_icons = {
+    [vim.diagnostic.severity.ERROR] = "✖",
+    [vim.diagnostic.severity.WARN] = "⚠",
+    [vim.diagnostic.severity.INFO] = "ℹ",
+    [vim.diagnostic.severity.HINT] = "⚑",
+  },
+
   -- foldmarkers: use ▸/▾ in the fold column instead of +/- from the default
   foldmarkers = true,
 
@@ -65,6 +75,63 @@ local DEFAULTS = {
   },
 }
 
+local SEVERITY_HL = {
+  [vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
+  [vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
+  [vim.diagnostic.severity.INFO] = "DiagnosticSignInfo",
+  [vim.diagnostic.severity.HINT] = "DiagnosticSignHint",
+}
+
+local SEVERITY_ORDER = {
+  [vim.diagnostic.severity.ERROR] = 1,
+  [vim.diagnostic.severity.WARN] = 2,
+  [vim.diagnostic.severity.INFO] = 3,
+  [vim.diagnostic.severity.HINT] = 4,
+}
+
+-- Returns a highlighted suffix like ` ✖1 ⚠2` listing the diagnostics contained
+-- inside the current fold, or "" when the fold has none.
+local function diagnostic_suffix()
+  local cfg = M.config
+  if not cfg.foldtext_diagnostics then
+    return ""
+  end
+
+  local start, finish = vim.v.foldstart - 1, vim.v.foldend - 1
+  local counts = {}
+  local found = false
+  for _, d in ipairs(vim.diagnostic.get(0)) do
+    if d.lnum <= finish and (d.end_lnum or d.lnum) >= start then
+      local sev = d.severity or vim.diagnostic.severity.ERROR
+      counts[sev] = (counts[sev] or 0) + 1
+      found = true
+    end
+  end
+  if not found then
+    return ""
+  end
+
+  local sevs = {}
+  for sev in pairs(counts) do
+    sevs[#sevs + 1] = sev
+  end
+  table.sort(sevs, function(a, b)
+    return (SEVERITY_ORDER[a] or 9) < (SEVERITY_ORDER[b] or 9)
+  end)
+
+  local parts = {}
+  for _, sev in ipairs(sevs) do
+    local icon = cfg.diagnostics_icons[sev]
+    if icon then
+      parts[#parts + 1] = " [[%#" .. SEVERITY_HL[sev] .. "#" .. icon .. " " .. counts[sev] .. "%*]]"
+    end
+  end
+  if #parts == 0 then
+    return ""
+  end
+  return table.concat(parts)
+end
+
 -- Returns the fold text for the current fold.
 -- 'vs'   style: ` struct GameData { ... }`
 -- 'count' style: ` struct GameData (14)`
@@ -74,15 +141,16 @@ function M.foldtext()
   local lines = vim.api.nvim_buf_get_lines(0, lnum - 1, lnum, false)
   local text = lines[1] or ""
   text = text:gsub("%s+$", "")
+  local suffix = diagnostic_suffix()
   if style == "count" then
     local count = vim.v.foldend - vim.v.foldstart + 1
-    return " " .. text .. " (" .. count .. ")"
+    return " " .. text .. " (" .. count .. ")" .. suffix
   end
   -- vs style
   if not text:match("%{%s*$") then
     text = text .. " {"
   end
-  return " " .. text .. " ... }"
+  return " " .. text .. " ... }" .. suffix
 end
 
 local function set_foldmethod(fm)
