@@ -124,6 +124,7 @@ local function diagnostic_chunks()
   for _, sev in ipairs(sevs) do
     local icon = cfg.diagnostics_icons[sev]
     if icon then
+      chunks[#chunks + 1] = { "  ", "Folded" }
       chunks[#chunks + 1] = { icon .. " " .. counts[sev], SEVERITY_HL[sev] }
     end
   end
