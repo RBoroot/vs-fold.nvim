@@ -60,8 +60,6 @@ require("vs-fold").setup({
   -- Also show the most severe diagnostic icon of a closed fold in the sign
   -- column (gutter), like VS Code's error bar indicator.
   fold_gutter_diagnostics = true,
-  -- Leave a one-cell gap between the fold arrow (▸) and the gutter sign icon.
-  fold_gutter_padding = true,
   -- Icons per severity; set an entry to false to hide that severity.
   diagnostics_icons = {
     [4] = "✖", -- ERROR (vim.diagnostic.severity.ERROR)

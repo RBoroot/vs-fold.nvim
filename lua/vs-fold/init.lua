@@ -25,9 +25,6 @@ local DEFAULTS = {
   -- column (gutter), highlighted like VS Code's error bar indicator.
   fold_gutter_diagnostics = true,
 
-  -- Leave a one-cell gap between the fold arrow (▸) and the gutter sign icon.
-  fold_gutter_padding = true,
-
   diagnostics_icons = {
     [vim.diagnostic.severity.ERROR] = "✖",
     [vim.diagnostic.severity.WARN] = "⚠",
@@ -270,7 +267,7 @@ local function update_fold_signs()
         local icon = sev and cfg.diagnostics_icons[sev]
         if icon then
           vim.api.nvim_buf_set_extmark(buf, sign_ns, start - 1, 0, {
-            sign_text = (cfg.fold_gutter_padding and " " or "") .. icon,
+            sign_text = icon,
             sign_hl_group = SEVERITY_HL[sev],
           })
         end
