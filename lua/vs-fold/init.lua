@@ -8,6 +8,12 @@
 local M = {}
 
 local DEFAULTS = {
+  -- Whether folding is enabled on startup
+  enabled = true,
+
+  -- Keymap to toggle folding on/off. Set to false to disable the default map.
+  keymap = "<leader>zf",
+
   -- Visual Studio style: keep the '{' and show the body as "...}"
   foldtext_style = "vs",
 
@@ -79,11 +85,22 @@ function M.foldtext()
   return " " .. text .. " ... }"
 end
 
+local function set_foldmethod(fm)
+  vim.opt.foldmethod = fm
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    pcall(vim.api.nvim_win_set_option, win, "foldmethod", fm)
+  end
+end
+
 local function apply_window_opts()
   local opt = vim.opt
   local cfg = M.config
 
-  opt.foldmethod = "expr"
+  set_foldmethod(M.enabled and "expr" or "manual")
+  if not M.enabled then
+    return
+  end
+
   opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
   opt.foldnestmax = cfg.foldnestmax
   opt.foldlevel = cfg.foldlevel
@@ -108,10 +125,43 @@ local function apply_queries()
   end
 end
 
+--- Enable or disable vs-fold. Folding can be turned on/off at any time.
+---@param enabled boolean
+---@return boolean the new enabled state
+function M.setEnabled(enabled)
+  M.enabled = enabled
+  apply_window_opts()
+  return M.enabled
+end
+
+--- Toggle vs-fold on/off.
+---@return boolean the new enabled state
+function M.toggle()
+  return M.setEnabled(not M.enabled)
+end
+
 --- Setup vs-fold.nvim.
 ---@param opts table|nil
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", DEFAULTS, opts or {})
+  M.enabled = M.config.enabled
+
+  if M.config.keymap then
+    vim.keymap.set("n", M.config.keymap, M.toggle, { desc = "Toggle vs-fold.nvim" })
+  end
+
+  vim.api.nvim_create_user_command("VsFold", function(args)
+    local arg = vim.trim(args.args)
+    if arg == "" or arg == "toggle" then
+      M.toggle()
+    elseif arg == "on" then
+      M.setEnabled(true)
+    elseif arg == "off" then
+      M.setEnabled(false)
+    else
+      vim.notify("Usage: VsFold [toggle|on|off]", vim.log.levels.ERROR)
+    end
+  end, { nargs = "?", desc = "Toggle VS-style treesitter folding" })
 
   vim.api.nvim_create_autocmd({ "FileType", "BufRead", "BufNewFile" }, {
     group = vim.api.nvim_create_augroup("vs_fold", { clear = true }),
@@ -119,6 +169,7 @@ function M.setup(opts)
   })
 
   apply_queries()
+  apply_window_opts()
 end
 
 return M

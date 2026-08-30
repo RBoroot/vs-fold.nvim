@@ -37,10 +37,23 @@ Call `setup()` once. It:
 Toggle folds with the usual keys: `zc` (fold close), `zo` (open), `za` (toggle),
 `zM` (close all), `zR` (open all).
 
+To turn VS-style folding itself on/off:
+
+- `:VsFold` or `:VsFold toggle` — toggle
+- `:VsFold on` / `:VsFold off` — force on/off
+- `<leader>zf` (default keymap, configurable) — toggle
+- `require("vs-fold").toggle()` / `require("vs-fold").setEnabled(true|false)`
+
 ## Options
 
 ```lua
 require("vs-fold").setup({
+  -- Start with folding on (true) or off (false). Default: true
+  enabled = true,
+
+  -- Keymap to toggle folding. Set to false to disable the default map.
+  keymap = "<leader>zf",
+
   -- "vs"   -> ` int main() { ... }`
   -- "count"-> ` int main() (11)`
   foldtext_style = "vs",
