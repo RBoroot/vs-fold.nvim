@@ -16,7 +16,7 @@ enums, namespaces, `#if` blocks, and statement blocks (`if/else`, `for`, `while`
 
 ```lua
 {
-  "your-user/vs-fold.nvim",
+  "RBoroot/vs-fold.nvim",
   config = function()
     require("vs-fold").setup()
   end,
