@@ -89,12 +89,13 @@ local SEVERITY_ORDER = {
   [vim.diagnostic.severity.HINT] = 4,
 }
 
--- Returns a highlighted suffix like ` ✖1 ⚠2` listing the diagnostics contained
--- inside the current fold, or "" when the fold has none.
-local function diagnostic_suffix()
+-- Returns virtual-text chunks (text + highlight group) for the diagnostics
+-- contained inside the current fold, e.g. ` {icon.." 1", "DiagnosticSignError"}`.
+-- Returns an empty list when the fold has none.
+local function diagnostic_chunks()
   local cfg = M.config
   if not cfg.foldtext_diagnostics then
-    return ""
+    return {}
   end
 
   local start, finish = vim.v.foldstart - 1, vim.v.foldend - 1
@@ -108,7 +109,7 @@ local function diagnostic_suffix()
     end
   end
   if not found then
-    return ""
+    return {}
   end
 
   local sevs = {}
@@ -119,20 +120,17 @@ local function diagnostic_suffix()
     return (SEVERITY_ORDER[a] or 9) < (SEVERITY_ORDER[b] or 9)
   end)
 
-  local parts = {}
+  local chunks = {}
   for _, sev in ipairs(sevs) do
     local icon = cfg.diagnostics_icons[sev]
     if icon then
-      parts[#parts + 1] = " [[%#" .. SEVERITY_HL[sev] .. "#" .. icon .. " " .. counts[sev] .. "%*]]"
+      chunks[#chunks + 1] = { icon .. " " .. counts[sev], SEVERITY_HL[sev] }
     end
   end
-  if #parts == 0 then
-    return ""
-  end
-  return table.concat(parts)
+  return chunks
 end
 
--- Returns the fold text for the current fold.
+-- Returns the fold text for the current fold as a list of virtual-text chunks.
 -- 'vs'   style: ` struct GameData { ... }`
 -- 'count' style: ` struct GameData (14)`
 function M.foldtext()
@@ -141,16 +139,22 @@ function M.foldtext()
   local lines = vim.api.nvim_buf_get_lines(0, lnum - 1, lnum, false)
   local text = lines[1] or ""
   text = text:gsub("%s+$", "")
-  local suffix = diagnostic_suffix()
+  local result = {}
   if style == "count" then
     local count = vim.v.foldend - vim.v.foldstart + 1
-    return " " .. text .. " (" .. count .. ")" .. suffix
+    result[#result + 1] = { " " .. text .. " (" .. count .. ")", "Folded" }
+  else
+    -- vs style
+    if not text:match("%{%s*$") then
+      text = text .. " {"
+    end
+    result[#result + 1] = { " " .. text .. " ... }", "Folded" }
   end
-  -- vs style
-  if not text:match("%{%s*$") then
-    text = text .. " {"
+
+  for _, chunk in ipairs(diagnostic_chunks()) do
+    result[#result + 1] = chunk
   end
-  return " " .. text .. " ... }" .. suffix
+  return result
 end
 
 local function set_foldmethod(fm)
