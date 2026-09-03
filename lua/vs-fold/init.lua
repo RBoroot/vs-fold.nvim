@@ -209,6 +209,7 @@ local function apply_window_opts()
     fc.foldopen = "▾"
     fc.foldclose = "▸"
     fc.fold = " "
+    fc.foldsep = " "
     if cfg.foldinner ~= false then
       fc.foldinner = " "
     end
