@@ -208,9 +208,9 @@ local function apply_window_opts()
     local fc = vim.opt.fillchars:get()
     fc.foldopen = "▾"
     fc.foldclose = "▸"
-    fc.fold = ""
+    fc.fold = " "
     if cfg.foldinner ~= false then
-      fc.foldinner = ""
+      fc.foldinner = " "
     end
     vim.opt.fillchars = fc
   end
