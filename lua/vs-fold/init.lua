@@ -77,6 +77,72 @@ local DEFAULTS = {
       (switch_statement) @fold
       (case_statement) @fold
     ]],
+    lua = [[
+      (function_declaration) @fold
+      (if_statement) @fold
+      (while_statement) @fold
+      (for_statement) @fold
+      (repeat_statement) @fold
+      (table_constructor) @fold
+    ]],
+    -- bash requires the bash parser to be installed
+    bash = [[
+      (function_definition) @fold
+      (if_statement) @fold
+      (for_statement) @fold
+      (c_style_for_statement) @fold
+      (while_statement) @fold
+      (case_statement) @fold
+      (do_group) @fold
+      (compound_statement) @fold
+      (subshell) @fold
+    ]],
+    javascript = [[
+      (function_declaration) @fold
+      (class_declaration) @fold
+      (method_definition) @fold
+      (object) @fold
+      (if_statement) @fold
+      (for_statement) @fold
+      (for_in_statement) @fold
+      (while_statement) @fold
+      (switch_statement) @fold
+      (try_statement) @fold
+    ]],
+    typescript = [[
+      (function_declaration) @fold
+      (class_declaration) @fold
+      (interface_declaration) @fold
+      (type_alias_declaration) @fold
+      (enum_declaration) @fold
+      (method_definition) @fold
+      (module) @fold
+      (object) @fold
+      (if_statement) @fold
+      (for_statement) @fold
+      (while_statement) @fold
+      (switch_statement) @fold
+      (try_statement) @fold
+    ]],
+    css = [[
+      (rule_set) @fold
+      (media_statement) @fold
+      (keyframes_statement) @fold
+    ]],
+    glsl = [[
+      (function_definition) @fold
+      (struct_specifier) @fold
+    ]],
+    cmake = [[
+      (function_def) @fold
+      (macro_def) @fold
+      (if_condition) @fold
+      (foreach_loop) @fold
+      (while_loop) @fold
+    ]],
+    vim = [[
+      (function_definition) @fold
+    ]],
   },
 }
 

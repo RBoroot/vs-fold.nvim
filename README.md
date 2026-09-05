@@ -24,7 +24,9 @@ enums, namespaces, `#if` blocks, and statement blocks (`if/else`, `for`, `while`
 ```
 
 Since it relies on treesitter, make sure `nvim-treesitter` (or `vim.treesitter`)
-is installed with the `c` and `cpp` parsers.
+is installed with a parser for each language you fold. Built-in support covers
+`c`, `cpp`, `lua`, `bash`, `javascript`, `typescript`, `css`, `glsl`, `cmake`,
+and `vim` (`:TSInstall c cpp lua bash javascript typescript css glsl cmake vim`).
 
 ## Usage
 
@@ -84,12 +86,15 @@ require("vs-fold").setup({
   foldnestmax = 5, -- allow nested outline items (methods inside classes)
   foldlevel = 99,  -- open all folds by default
 
-  -- Override the folds query per language (treesitter query text).
+  -- Override or extend the folds query per language (treesitter query text).
   -- Only define node types that exist in the target grammar, or the whole
   -- query will fail to compile and folding will silently stop working.
+  -- Built-in languages can be tweaked by redefining an entry; new languages
+  -- are added the same way.
   langs = {
     cpp = "((function_definition) @fold\n (while_statement) @fold\n)",
     c = "((function_definition) @fold\n)",
+    lua = "((function_declaration) @fold\n)",
   },
 })
 ```
